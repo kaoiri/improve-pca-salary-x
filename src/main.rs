@@ -11,11 +11,11 @@ fn main() -> anyhow::Result<()> {
     let dir = exe.parent().unwrap_or(dir_work.as_path());
     println!("起動ディレクトリ：{:?}", dir);
 
-    let path_read_roster = dir.join("名簿.csv");
-    let path_read_data = dir.join("出勤簿.csv");
-    let path_output = dir.join("出勤簿_社員名.csv");
-    let path_roster = dir.join("名簿_UTF8.csv");
-    let path_data = dir.join("出勤簿_UTF8.csv");
+    let path_read_roster = dir.join("出勤簿.csv");
+    let path_read_data = dir.join("PCA給与X.csv");
+    let path_output = dir.join("PCA給与X_社員名.csv");
+    let path_roster = dir.join("出勤簿_UTF8.csv");
+    let path_data = dir.join("PCA給与X_UTF8.csv");
 
     {
         println!("CSVファイルをUTF-8に変換します...");
@@ -73,7 +73,8 @@ fn main() -> anyhow::Result<()> {
             }
 
             let line = columns.join(",") + "\n";
-            target.write(line.as_bytes())?;
+            let (encoded, _encoding, _res) = SHIFT_JIS.encode(&line);
+            target.write(&encoded)?;
         }
     }
     println!("完了");
