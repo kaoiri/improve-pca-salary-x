@@ -1,7 +1,18 @@
-use std::fs::{self, File};
+#[macro_use] extern crate anyhow;
+
+mod member;
+mod decode;
+mod clock;
+mod record;
+mod total;
+mod cell;
+
+use crate::decode::Decode;
+use crate::clock::Date;
+use crate::total::Total;
+use std::fs::File;
 use std::env;
-use std::io::{self, BufRead, Read, Write};
-use std::collections::HashMap;
+use std::io::{self, BufRead, BufWriter, Write};
 use encoding_rs::SHIFT_JIS;
 
 fn main() -> anyhow::Result<()> {
@@ -11,76 +22,73 @@ fn main() -> anyhow::Result<()> {
     let dir = exe.parent().unwrap_or(dir_work.as_path());
     println!("起動ディレクトリ：{:?}", dir);
 
-    let path_read_roster = dir.join("出勤簿.csv");
-    let path_read_data = dir.join("PCA給与X.csv");
-    let path_output = dir.join("PCA給与X_社員名.csv");
-    let path_roster = dir.join("出勤簿_UTF8.csv");
-    let path_data = dir.join("PCA給与X_UTF8.csv");
+    let path_records = dir.join("出勤簿.csv");
+    let path_totals = dir.join("PCA給与X.csv");
+    let path_offs = dir.join("休日.csv");
+    let path_rounded_records = dir.join("出勤簿_補正版.csv");
+    let path_rounded_totals = dir.join("PCA給与X_補正版.csv");
 
-    {
-        println!("CSVファイルをUTF-8に変換します...");
-        let mut roster_raw = File::open(&path_read_roster)?;
-        let mut data_raw = File::open(&path_read_data)?;
-
-        let mut writer_roster = io::BufWriter::new(File::create(&path_roster)?);
-        let mut writer_data = io::BufWriter::new(File::create(&path_data)?);
-
-        let mut buf = Vec::new();
-        roster_raw.read_to_end(&mut buf)?;
-        let (roster_decoded, _encoding, _errors) = SHIFT_JIS.decode(&buf);
-        writer_roster.write(roster_decoded.as_bytes())?;
-
-        buf = Vec::new();
-        data_raw.read_to_end(&mut buf)?;
-        let (data_decoded, _encoding, _errors) = SHIFT_JIS.decode(&buf);
-        writer_data.write(data_decoded.as_bytes())?;
-        println!("完了");
-    }
-
-    println!("ファイルを開いています...");
-    let reader_roster = io::BufReader::new(File::open(&path_roster)?);
-    let reader_data = io::BufReader::new(File::open(&path_data)?);
-    let mut target = io::BufWriter::new(File::create(&path_output)?);
+    println!("名簿を読み込んでいます...");
+    let reader_roster = File::open(&path_records)?.decode()?;
+    let roster = member::collect_from_csv(reader_roster);
     println!("完了");
 
-    
-    println!("名簿を読み込んでいます...");
-    let roster: HashMap<String, String> =
-        reader_roster
+    println!("休日リストを読み込んでいます...");
+    let reader_offs = File::open(&path_offs)?.decode()?;
+    let offs: Vec<Date> =
+        reader_offs
         .lines()
-        .filter_map(|line| {
-            line.map(|l| {
-                let columns: Vec<&str> = l.split(",").collect();
-                (columns[1].to_string(), columns[2].to_string())
-            }).ok()
+        .flat_map(|line| {
+            line
+            .unwrap_or("".to_string())
+            .split(",")
+            .map(|s| s.parse::<Date>().unwrap_or(Date::new(0, 0)))
+            .collect::<Vec<Date>>()
         })
         .collect();
     println!("完了");
 
-    println!("社員名を書き込んでいます...");
-    let lines = reader_data.lines();
-    for (i, line) in lines.enumerate() {
-        if let Ok(l) = line {
-            let mut columns: Vec<&str> = l.split(",").collect();
+    println!("出勤簿を読み込んでいます...");
+    let reader_records = File::open(&path_records)?.decode()?;
+    let records = record::collect_from_csv(reader_records, &roster, &offs);
+    println!("完了");
 
-            if i == 0 {
-                   columns.insert(1, "社員名")
-            } else {
-                match roster.get(&columns[0].to_string()) {
-                    Some(name) => columns.insert(1, name),
-                    None => columns.insert(1, "")
-                };
-            }
+    println!("PCA給与Xを読み込んでいます...");
+    let reader_totals = File::open(&path_totals)?.decode()?;
+    let totals = total::collect_from_csv(reader_totals, &roster);
+    println!("完了");
 
-            let line = columns.join(",") + "\n";
-            let (encoded, _encoding, _res) = SHIFT_JIS.encode(&line);
-            target.write(&encoded)?;
-        }
+    println!("集計しています...");
+    let rounded_totals =
+        totals
+        .into_iter()
+        .map(|t| {
+            let the_records = records.iter().filter(|r| r.member == t.member).collect();
+            t.total(the_records).unwrap_or(Total::empty())
+        });
+    println!("完了");
+
+    println!("書き出しています...");
+    let mut target_records = io::BufWriter::new(File::create(&path_rounded_records)?);
+    let mut target_totals = io::BufWriter::new(File::create(&path_rounded_totals)?);
+
+    write_line_with_shift_jis(&mut target_records, record::get_csv_headings().to_string())?;
+    for r in &records {
+        write_line_with_shift_jis(&mut target_records, r.export_rounded_to_csv()?)?;
+    }
+
+    write_line_with_shift_jis(&mut target_totals, total::get_csv_headings().to_string())?;
+    for t in rounded_totals {
+        write_line_with_shift_jis(&mut target_totals, t.export_to_csv())?;
     }
     println!("完了");
 
-    fs::remove_file(&path_roster)?;
-    fs::remove_file(&path_data)?;
+    Ok(())
+}
 
+fn write_line_with_shift_jis(writer: &mut BufWriter<File>, s: String) -> Result<(), std::io::Error> {
+    let line = s + "\n";
+    let (encoded, _encoding, _res) = SHIFT_JIS.encode(&line);
+    writer.write(&encoded)?;
     Ok(())
 }
