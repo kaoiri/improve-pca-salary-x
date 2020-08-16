@@ -33,8 +33,8 @@ impl Member {
 
     pub fn start_at(&self) -> Clock {
         match self.member_type {
-            MemberKind::FullTime => Clock::new(9, 0),
-            MemberKind::PartTime => Clock::new(8, 30)
+            MemberKind::FullTime => Clock::new(8, 30),
+            MemberKind::PartTime => Clock::new(9, 0)
         }
     }
 }
