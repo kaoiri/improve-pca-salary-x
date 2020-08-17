@@ -59,7 +59,12 @@ impl Record {
             };
 
         let mut work_time = self.left_at.clone().data()?.round_down().diff(start_at);
-        work_time = work_time.sub(&Time::new(0, 50));
+
+        // 昼休憩
+        if self.left_at.peek()?.later_than(&Clock::new(13, 0)) {
+            work_time = work_time.sub(&Time::new(0, 50));
+        }
+
         work_time = work_time.sub(&self.break_time.clone().data()?);
         Ok(work_time.round_down())
     }

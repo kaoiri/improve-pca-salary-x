@@ -33,6 +33,13 @@ impl<T: Clone> Cell<T> {
             Self::NoData => Err(anyhow!("Missing data"))
         }
     } 
+
+    pub fn peek(&self) -> anyhow::Result<&T> {
+        match self {
+            Self::Data(d) => Ok(d),
+            Self::NoData => Err(anyhow!("Missing data"))
+        }
+    } 
 }
 
 impl<T: PartialEq + Clone> PartialEq for Cell<T> {
