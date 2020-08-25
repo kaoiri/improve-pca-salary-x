@@ -263,7 +263,7 @@ impl Clock {
         Self::new(self.hours, minutes)
     }
 
-    pub fn diff(&self, other: Self) -> Time {
+    pub fn diff(&self, other: &Self) -> Time {
         let mut self_as_minutes = self.as_minutes();
         let other_as_minutes = other.as_minutes();
 

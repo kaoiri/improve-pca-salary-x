@@ -3,7 +3,7 @@ use std::io::BufRead;
 use std::collections::HashSet;
 use crate::clock::Clock;
 
-const FULLTIME: [u16; 9] = [1, 2, 1111, 1112, 1113, 1114, 1115, 3110, 3119];
+const FULLTIME: [u16; 10] = [1, 2, 1111, 1112, 1113, 1114, 1115, 3110, 3119, 3132];
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum MemberKind {
