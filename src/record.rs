@@ -1,7 +1,7 @@
 use std::io::BufRead;
 use std::collections::HashSet;
 use crate::member::Member;
-use crate::clock::{Month, DayKind, Date, DateKind, Time, Clock};
+use crate::clock::{Month, DayKind, Date, DateKind, Time, Clock, Range};
 use crate::cell::Cell;
 
 #[derive(Debug)]
@@ -61,11 +61,15 @@ impl Record {
         let mut work_time = Time::new(0, 0);
 
         let start_lunch_at = Clock::new(12, 10);
-        let work_time_am =
+        let mut work_time_am =
             match left_at.later_than(&start_lunch_at) {
                 true => start_lunch_at.diff(&start_at),
                 false => left_at.diff(&start_at)
             };
+
+        if left_at == Clock::new(12, 0) && self.left_at.peek()?.or_later_than(&start_lunch_at) {
+            work_time_am = start_lunch_at.diff(&start_at);
+        }
 
         if !start_at.later_than(&start_lunch_at) {
             work_time = work_time.merge(&work_time_am);
@@ -85,7 +89,7 @@ impl Record {
             };
         work_time = work_time.merge(&work_time_pm);
 
-        work_time = work_time.sub(self.break_time.peek()?);
+        work_time = work_time.sub(&self.break_time()?);
         Ok(work_time.round_down())
     }
 
@@ -117,6 +121,36 @@ impl Record {
         buf.push(self.remarks.to_string());
         buf.push(self.days.to_string());
         Ok(buf.join(","))
+    }
+
+    pub fn break_time(&self) -> anyhow::Result<Time> {
+        let breaks: [Range; 4] = [
+            Range::new(Clock::new(10, 30), Clock::new(10, 40)),
+            Range::new(Clock::new(15, 00), Clock::new(15, 15)),
+            Range::new(Clock::new(17, 15), Clock::new(17, 30)),
+            Range::new(Clock::new(19, 30), Clock::new(19, 45))
+        ];
+
+        let mut result = self.break_time.peek()?.clone();
+        let mut nominal_break_time = Time::new(0, 0);
+        let mut excluded_break_times = Vec::new();
+        let range = Range::new(self.came_at.peek()?.clone(), self.left_at.peek()?.clone());
+        for b in breaks.iter() {
+            if range.includes(&b) {
+                nominal_break_time = nominal_break_time.merge(&b.abs());
+            } else {
+                excluded_break_times.push(b);
+            }
+        }
+
+        for b in excluded_break_times.into_iter() {
+            let diff = self.break_time.peek()?.clone().sub(&nominal_break_time);
+            if diff.as_minutes() >= b.abs().as_minutes() {
+                result = result.sub(&b.abs());
+            }
+        }
+
+        Ok(result)
     }
 }
 

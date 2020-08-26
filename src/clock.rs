@@ -278,6 +278,10 @@ impl Clock {
         self.as_minutes() > other.as_minutes()
     }
 
+    pub fn or_later_than(&self, other: &Self) -> bool {
+        self.as_minutes() >= other.as_minutes()
+    }
+
     pub fn as_minutes(&self) -> u16 {
         60 * self.hours + self.minutes
     }
@@ -316,6 +320,26 @@ impl FromStr for Clock {
             elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
             elements.next().ok_or(anyhow!("Invalid format"))?.parse()?
         ))
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Range {
+    start: Clock,
+    end: Clock
+}
+
+impl Range {
+    pub fn new(start: Clock, end: Clock) -> Self {
+        Self { start, end }
+    }
+
+    pub fn includes(&self, other: &Self) -> bool {
+        other.start.or_later_than(&self.start) && self.end.or_later_than(&other.end)
+    }
+
+    pub fn abs(&self) -> Time {
+        self.end.diff(&self.start)
     }
 }
 
