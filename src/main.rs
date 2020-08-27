@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
     let dir = exe.parent().unwrap_or(dir_work.as_path());
     println!("起動ディレクトリ：{:?}", dir);
 
+    let path_roster = dir.join("名簿.csv");
     let path_records = dir.join("出勤簿.csv");
     let path_totals = dir.join("PCA給与X.csv");
     let path_offs = dir.join("休日.csv");
@@ -29,7 +30,7 @@ fn main() -> anyhow::Result<()> {
     let path_rounded_totals = dir.join("PCA給与X_補正版.csv");
 
     println!("名簿を読み込んでいます...");
-    let reader_roster = File::open(&path_records)?.decode()?;
+    let reader_roster = File::open(&path_roster)?.decode()?;
     let roster = member::collect_from_csv(reader_roster);
     println!("完了");
 

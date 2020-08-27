@@ -124,29 +124,12 @@ impl Record {
     }
 
     pub fn break_time(&self) -> anyhow::Result<Time> {
-        let breaks: [Range; 4] = [
-            Range::new(Clock::new(10, 30), Clock::new(10, 40)),
-            Range::new(Clock::new(15, 00), Clock::new(15, 15)),
-            Range::new(Clock::new(17, 15), Clock::new(17, 30)),
-            Range::new(Clock::new(19, 30), Clock::new(19, 45))
-        ];
-
         let mut result = self.break_time.peek()?.clone();
-        let mut nominal_break_time = Time::new(0, 0);
-        let mut excluded_break_times = Vec::new();
+        let forces = self.member.peek()?.member_type.force_breaks();
         let range = Range::new(self.came_at.peek()?.clone(), self.left_at.peek()?.clone());
-        for b in breaks.iter() {
-            if range.includes(&b) {
-                nominal_break_time = nominal_break_time.merge(&b.abs());
-            } else {
-                excluded_break_times.push(b);
-            }
-        }
-
-        for b in excluded_break_times.into_iter() {
-            let diff = self.break_time.peek()?.clone().sub(&nominal_break_time);
-            if diff.as_minutes() >= b.abs().as_minutes() {
-                result = result.sub(&b.abs());
+        for f in forces.iter() {
+            if !range.includes(f) {
+                result = result.sub(&f.abs());
             }
         }
 

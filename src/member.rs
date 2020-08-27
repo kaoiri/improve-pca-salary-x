@@ -1,40 +1,74 @@
 use std::fmt::{self, Display};
+use std::str::FromStr;
 use std::io::BufRead;
 use std::collections::HashSet;
-use crate::clock::Clock;
-
-const FULLTIME: [u16; 10] = [1, 2, 1111, 1112, 1113, 1114, 1115, 3110, 3119, 3132];
+use crate::clock::{Clock, Range};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum MemberKind {
     FullTime,
-    PartTime
+    PartTimeA,
+    PartTimeB,
+    PartTimeC,
+    PartTimeD,
+    Unknown
+}
+
+impl MemberKind {
+    pub fn force_breaks(&self) -> Vec<Range> {
+        let break0 = Range::new(Clock::new(10, 30), Clock::new(10, 40));
+        let break1 = Range::new(Clock::new(15, 00), Clock::new(15, 15));
+        let break2 = Range::new(Clock::new(17, 15), Clock::new(17, 30));
+        let break3 = Range::new(Clock::new(19, 30), Clock::new(19, 45));
+
+        match self {
+            MemberKind::FullTime => vec![break0, break1, break2],
+            MemberKind::PartTimeA => vec![break0],
+            MemberKind::PartTimeB => vec![break0],
+            MemberKind::PartTimeC => vec![break0],
+            _ => vec![]
+        }
+    }
+}
+
+impl FromStr for MemberKind {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let member_type = match s {
+            "LUC社員" => MemberKind::FullTime,
+            "役員" => MemberKind::FullTime,
+            "A" => MemberKind::PartTimeA,
+            "B" => MemberKind::PartTimeB,
+            "C" => MemberKind::PartTimeC,
+            "D" => MemberKind::PartTimeD,
+            _ => MemberKind::Unknown
+        };
+
+        Ok(member_type)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Member {
     pub id: u16,
     pub name: String,
-    member_type: MemberKind
+    pub member_type: MemberKind
 }
 
 impl Member {
-    pub fn new<T: Into<String>> (id: u16, name: T) -> Self {
-        let member_type = match FULLTIME.iter().find(|&&f| f == id) {
-            Some(_) => MemberKind::FullTime,
-            None => MemberKind::PartTime
-        };
+    pub fn new<T: Into<String>> (id: u16, name: T, member_type: MemberKind) -> Self {
         Self { id, name: name.into(), member_type }
     }
 
-    pub fn from_strs(id: &str, name: &str) -> Result<Self, std::num::ParseIntError> {
-        Ok(Self::new(id.parse()?, name))
+    pub fn from_strs(id: &str, name: &str, member_type: &str) -> anyhow::Result<Self> {
+        Ok(Self::new(id.parse()?, name, member_type.parse::<MemberKind>()?))
     }
 
     pub fn start_at(&self) -> Clock {
         match self.member_type {
             MemberKind::FullTime => Clock::new(8, 30),
-            MemberKind::PartTime => Clock::new(9, 0)
+            _ => Clock::new(9, 0)
         }
     }
 }
@@ -55,7 +89,7 @@ pub fn collect_from_csv<R: BufRead>(reader: R) -> HashSet<Member> {
             let trimmed = l.replace("\"", "");
             let columns: Vec<&str> = trimmed.split(",").collect();
             if columns.len() < 3 { return None; }
-            match Member::from_strs(columns[1], columns[2]) {
+            match Member::from_strs(columns[0], columns[1], columns[2]) {
                 Ok(m) => Some(m),
                 _ => None
             }
