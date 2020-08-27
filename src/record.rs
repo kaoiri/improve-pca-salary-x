@@ -1,7 +1,7 @@
 use std::io::BufRead;
 use std::collections::HashSet;
 use crate::member::Member;
-use crate::clock::{Month, DayKind, Date, DateKind, Time, Clock};
+use crate::clock::{Month, DayKind, Date, DateKind, Time, Clock, Range};
 use crate::cell::Cell;
 
 #[derive(Debug)]
@@ -50,22 +50,46 @@ impl Record {
     }
 
     pub fn rounded_work_time(&self) -> anyhow::Result<Time> {
-        let came_at = self.came_at.clone().data()?;
-        let mut start_at = self.member.clone().data()?.start_at();
+        let came_at = self.came_at.peek()?.clone();
+        let mut start_at = self.member.peek()?.clone().start_at();
         start_at =
             match came_at.later_than(&start_at) {
                 true  => came_at.round_up(),
                 false => start_at
             };
+        let left_at = self.left_at.peek()?.clone().round_down();
+        let mut work_time = Time::new(0, 0);
 
-        let mut work_time = self.left_at.clone().data()?.round_down().diff(start_at);
+        let start_lunch_at = Clock::new(12, 10);
+        let mut work_time_am =
+            match left_at.later_than(&start_lunch_at) {
+                true => start_lunch_at.diff(&start_at),
+                false => left_at.diff(&start_at)
+            };
 
-        // 昼休憩
-        if self.left_at.peek()?.later_than(&Clock::new(13, 0)) {
-            work_time = work_time.sub(&Time::new(0, 50));
+        if left_at == Clock::new(12, 0) && self.left_at.peek()?.or_later_than(&start_lunch_at) {
+            work_time_am = start_lunch_at.diff(&start_at);
         }
 
-        work_time = work_time.sub(&self.break_time.clone().data()?);
+        if !start_at.later_than(&start_lunch_at) {
+            work_time = work_time.merge(&work_time_am);
+        }
+
+        let end_lunch_at = Clock::new(13, 0);
+        let start_at_pm =
+            match start_at.later_than(&end_lunch_at) {
+                true => start_at,
+                false => end_lunch_at
+            };
+
+        let work_time_pm =
+            match left_at.later_than(&start_at_pm) {
+                true => left_at.diff(&start_at_pm),
+                false => Time::new(0, 0)
+            };
+        work_time = work_time.merge(&work_time_pm);
+
+        work_time = work_time.sub(&self.break_time()?);
         Ok(work_time.round_down())
     }
 
@@ -97,6 +121,19 @@ impl Record {
         buf.push(self.remarks.to_string());
         buf.push(self.days.to_string());
         Ok(buf.join(","))
+    }
+
+    pub fn break_time(&self) -> anyhow::Result<Time> {
+        let mut result = self.break_time.peek()?.clone();
+        let forces = self.member.peek()?.member_type.force_breaks();
+        let range = Range::new(self.came_at.peek()?.clone(), self.left_at.peek()?.clone());
+        for f in forces.iter() {
+            if !range.includes(f) {
+                result = result.sub(&f.abs());
+            }
+        }
+
+        Ok(result)
     }
 }
 
