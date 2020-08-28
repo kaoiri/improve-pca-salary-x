@@ -26,6 +26,7 @@ impl MemberKind {
             MemberKind::PartTimeA => vec![break0],
             MemberKind::PartTimeB => vec![break0],
             MemberKind::PartTimeC => vec![break0],
+            MemberKind::PartTimeD => vec![break0, break1, break2],
             _ => vec![]
         }
     }
