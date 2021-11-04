@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Release binary
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: improve-pca-salary-x.exe
+            asset_name: improve-pca-salary-x-x86_64-pc-windows-msvc.exe
+            cross: false
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: improve-pca-salary-x
+            asset_name: improve-pca-salary-x-x86_64-apple-darwin
+            cross: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Install LLVM Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: choco install llvm
+
+      - name: Setup LLVM path
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" > $env:GITHUB_ENV
+      - uses: actions-rs/toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.target }} --all-features --verbose
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@2.1.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}
+          overwrite: true
