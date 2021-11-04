@@ -81,7 +81,12 @@ impl Total {
         buf.push(self.total_work_time.to_string());
         buf.push(self.rounded_work_time.to_string());
         buf.push(self.rounded_over_work_time.to_string());
-        buf.append(&mut self.others.clone());
+        buf.append(&mut self.others
+            .iter()
+            .map(|o| {
+                o.replace(":", ".")
+            })
+            .collect::<Vec<String>>());
         buf.join(",")
     }
 }
