@@ -225,7 +225,7 @@ impl Time {
 
 impl Display for Time { 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: >02}:{: >02}", self.hours, self.minutes)
+        write!(f, "{: >02}.{: >02}", self.hours, self.minutes)
     }
 }
 
