@@ -7,6 +7,7 @@ use crate::clock::{Clock, Range};
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum MemberKind {
     FullTime,
+    Associate,
     PartTimeA,
     PartTimeB,
     PartTimeC,
@@ -23,6 +24,7 @@ impl MemberKind {
 
         match self {
             MemberKind::FullTime => vec![break0, break1, break2],
+            MemberKind::Associate => vec![break0],
             MemberKind::PartTimeA => vec![break0],
             MemberKind::PartTimeB => vec![break0],
             MemberKind::PartTimeC => vec![break0],
@@ -38,6 +40,7 @@ impl FromStr for MemberKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let member_type = match s {
             "LUC社員" => MemberKind::FullTime,
+            "LUC準社員" => MemberKind::Associate,
             "役員" => MemberKind::FullTime,
             "A" => MemberKind::PartTimeA,
             "B" => MemberKind::PartTimeB,
@@ -69,6 +72,7 @@ impl Member {
     pub fn start_at(&self) -> Clock {
         match self.member_type {
             MemberKind::FullTime => Clock::new(8, 30),
+            MemberKind::Associate => Clock::new(8, 30),
             _ => Clock::new(9, 0)
         }
     }
