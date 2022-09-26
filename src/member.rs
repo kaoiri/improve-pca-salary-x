@@ -48,9 +48,8 @@ impl FromStr for MemberKind {
             "D" => MemberKind::PartTimeD,
             _ => MemberKind::Unknown
         };
-
         Ok(member_type)
-    }
+    } 
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
