@@ -1,8 +1,8 @@
-use std::fmt::{self, Display};
-use std::str::FromStr;
-use std::io::BufRead;
-use std::collections::HashSet;
 use crate::clock::{Clock, Range};
+use std::collections::HashSet;
+use std::fmt::{self, Display};
+use std::io::BufRead;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum MemberKind {
@@ -12,7 +12,7 @@ pub enum MemberKind {
     PartTimeB,
     PartTimeC,
     PartTimeD,
-    Unknown
+    Unknown,
 }
 
 impl MemberKind {
@@ -29,7 +29,21 @@ impl MemberKind {
             MemberKind::PartTimeB => vec![break0],
             MemberKind::PartTimeC => vec![break0],
             MemberKind::PartTimeD => vec![break0, break1, break2],
-            _ => vec![]
+            _ => vec![],
+        }
+    }
+
+    pub fn print_force_breaks(&self) -> String {
+        // 休憩15:00[有り],休憩15:00[無し],休憩17:00[有り],休憩17:00[無し]
+
+        match self {
+            MemberKind::FullTime => "1,,1,".to_string(),
+            MemberKind::Associate => ",1,,1".to_string(),
+            MemberKind::PartTimeA => ",1,,1".to_string(),
+            MemberKind::PartTimeB => ",1,,1".to_string(),
+            MemberKind::PartTimeC => ",1,,1".to_string(),
+            MemberKind::PartTimeD => "1,,1,".to_string(),
+            _ => ",,,".to_string(),
         }
     }
 }
@@ -46,33 +60,44 @@ impl FromStr for MemberKind {
             "B" => MemberKind::PartTimeB,
             "C" => MemberKind::PartTimeC,
             "D" => MemberKind::PartTimeD,
-            _ => MemberKind::Unknown
+            _ => MemberKind::Unknown,
         };
         Ok(member_type)
-    } 
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Member {
     pub id: u16,
     pub name: String,
-    pub member_type: MemberKind
+    pub member_type: MemberKind,
+    pub from: String,
 }
 
 impl Member {
-    pub fn new<T: Into<String>> (id: u16, name: T, member_type: MemberKind) -> Self {
-        Self { id, name: name.into(), member_type }
+    pub fn new<T: Into<String>>(id: u16, name: T, member_type: MemberKind, from: T) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            member_type,
+            from: from.into(),
+        }
     }
 
-    pub fn from_strs(id: &str, name: &str, member_type: &str) -> anyhow::Result<Self> {
-        Ok(Self::new(id.parse()?, name, member_type.parse::<MemberKind>()?))
+    pub fn from_strs(id: &str, name: &str, member_type: &str, from: &str) -> anyhow::Result<Self> {
+        Ok(Self::new(
+            id.parse()?,
+            name,
+            member_type.parse::<MemberKind>()?,
+            from,
+        ))
     }
 
     pub fn start_at(&self) -> Clock {
         match self.member_type {
             MemberKind::FullTime => Clock::new(8, 30),
             MemberKind::Associate => Clock::new(8, 30),
-            _ => Clock::new(9, 0)
+            _ => Clock::new(9, 0),
         }
     }
 }
@@ -85,19 +110,24 @@ impl Display for Member {
 
 pub fn collect_from_csv<R: BufRead>(reader: R) -> HashSet<Member> {
     reader
-    .lines()
-    .filter_map(|line| {
-        line
-        .ok()
-        .and_then(|l| {
-            let trimmed = l.replace("\"", "");
-            let columns: Vec<&str> = trimmed.split(",").collect();
-            if columns.len() < 3 { return None; }
-            match Member::from_strs(columns[0], columns[1], columns[2]) {
-                Ok(m) => Some(m),
-                _ => None
-            }
+        .lines()
+        .filter_map(|line| {
+            line.ok().and_then(|l| {
+                let trimmed = l.replace("\"", "");
+                let columns: Vec<&str> = trimmed.split(",").collect();
+                if columns.len() < 3 {
+                    return None;
+                }
+                match Member::from_strs(
+                    columns[0],
+                    columns[1],
+                    columns[2],
+                    if columns.len() > 3 { columns[3] } else { "" },
+                ) {
+                    Ok(m) => Some(m),
+                    _ => None,
+                }
+            })
         })
-    })
-    .collect()
+        .collect()
 }
