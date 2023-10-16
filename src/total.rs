@@ -85,7 +85,15 @@ impl Total {
             &mut self
                 .others
                 .iter()
-                .map(|o| o.replace(":", "."))
+                .map(|value| {
+                    if value.contains(":") {
+                        value
+                            .parse::<Time>()
+                            .map_or(value.to_string(), |time| time.to_string())
+                    } else {
+                        value.to_string()
+                    }
+                })
                 .collect::<Vec<String>>(),
         );
         buf.join(",")
