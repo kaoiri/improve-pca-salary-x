@@ -1,9 +1,9 @@
-use std::io::BufRead;
-use std::collections::HashSet;
-use crate::member::Member;
-use crate::clock::Time;
-use crate::record::Record;
 use crate::cell::Cell;
+use crate::clock::Time;
+use crate::member::Member;
+use crate::record::Record;
+use std::collections::HashSet;
+use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct Total {
@@ -14,7 +14,7 @@ pub struct Total {
     pub total_work_time: Cell<Time>,
     pub others: Vec<String>,
     pub rounded_work_time: Cell<Time>,
-    pub rounded_over_work_time: Cell<Time>
+    pub rounded_over_work_time: Cell<Time>,
 }
 
 impl Total {
@@ -42,31 +42,31 @@ impl Total {
             total_work_time: total_work_time.parse()?,
             others: others.iter().map(|o| o.to_string()).collect(),
             rounded_work_time: Cell::new(Time::new(0, 0)),
-            rounded_over_work_time: Cell::new(Time::new(0, 0))
+            rounded_over_work_time: Cell::new(Time::new(0, 0)),
         })
     }
 
     pub fn empty() -> Self {
         Self {
             member: Cell::NoData,
-            nominal_work_days: Cell::NoData, 
+            nominal_work_days: Cell::NoData,
             nominal_work_time: Cell::NoData,
             work_days: Cell::NoData,
             total_work_time: Cell::NoData,
             others: vec![],
             rounded_work_time: Cell::NoData,
-            rounded_over_work_time: Cell::NoData
+            rounded_over_work_time: Cell::NoData,
         }
     }
 
     pub fn total(mut self, records: Vec<&Record>) -> anyhow::Result<Self> {
         for r in records.iter() {
-            self.rounded_work_time = self.rounded_work_time.map(|s| {
-                s.merge(&r.rounded_work_time().unwrap_or(Time::new(0, 0)))
-            });
-            self.rounded_over_work_time = self.rounded_over_work_time.map(|s| {
-                s.merge(&r.over_work_time().unwrap_or(Time::new(0, 0)))
-            });
+            self.rounded_work_time = self
+                .rounded_work_time
+                .map(|s| s.merge(&r.rounded_work_time().unwrap_or(Time::new(0, 0))));
+            self.rounded_over_work_time = self
+                .rounded_over_work_time
+                .map(|s| s.merge(&r.over_work_time().unwrap_or(Time::new(0, 0))));
         }
 
         Ok(self)
@@ -81,37 +81,37 @@ impl Total {
         buf.push(self.total_work_time.to_string());
         buf.push(self.rounded_work_time.to_string());
         buf.push(self.rounded_over_work_time.to_string());
-        buf.append(&mut self.others
-            .iter()
-            .map(|o| {
-                o.replace(":", ".")
-            })
-            .collect::<Vec<String>>());
+        buf.append(
+            &mut self
+                .others
+                .iter()
+                .map(|o| o.replace(":", "."))
+                .collect::<Vec<String>>(),
+        );
         buf.join(",")
     }
 }
 
 pub fn collect_from_csv<R: BufRead>(reader: R, roster: &HashSet<Member>) -> Vec<Total> {
     reader
-    .lines()
-    .flat_map(|line| {
-        line
-        .ok()
-        .and_then(|l| {
-            let trimmed = l.replace("\"", "");
-            let mut columns = trimmed.split(",");
-            Total::from_strs(
-                roster,
-                columns.next().unwrap_or(""),
-                columns.next().unwrap_or(""),
-                columns.next().unwrap_or(""),
-                columns.next().unwrap_or(""),
-                columns.next().unwrap_or(""),
-                columns.collect()
-            ).ok()
+        .lines()
+        .flat_map(|line| {
+            line.ok().and_then(|l| {
+                let trimmed = l.replace("\"", "");
+                let mut columns = trimmed.split(",");
+                Total::from_strs(
+                    roster,
+                    columns.next().unwrap_or(""),
+                    columns.next().unwrap_or(""),
+                    columns.next().unwrap_or(""),
+                    columns.next().unwrap_or(""),
+                    columns.next().unwrap_or(""),
+                    columns.collect(),
+                )
+                .ok()
+            })
         })
-    })
-    .collect()
+        .collect()
 }
 
 pub fn get_csv_headings() -> &'static str {

@@ -1,9 +1,12 @@
-use std::io::Read;
+use encoding_rs::SHIFT_JIS;
 use std::fs::File;
 use std::io::Cursor;
-use encoding_rs::SHIFT_JIS;
+use std::io::Read;
 
-pub trait Decode where Self: Sized + Read {
+pub trait Decode
+where
+    Self: Sized + Read,
+{
     fn decode(self) -> anyhow::Result<Cursor<String>>;
 }
 
@@ -16,3 +19,4 @@ impl Decode for File {
         Ok(Cursor::new(decoded.to_string()))
     }
 }
+

@@ -4,7 +4,7 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 pub struct Month {
     pub year: u16,
-    pub month: u16
+    pub month: u16,
 }
 
 impl Month {
@@ -27,7 +27,7 @@ impl FromStr for Month {
 
         Ok(Self {
             year: elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
-            month: elements.next().ok_or(anyhow!("Invalid format"))?.parse()?
+            month: elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
         })
     }
 }
@@ -41,22 +41,21 @@ pub enum DayKind {
     Thu,
     Fri,
     Sat,
-    Unknown
+    Unknown,
 }
 
 impl Display for DayKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s =
-            match self {
-                DayKind::Sun => "日",
-                DayKind::Mon => "月",
-                DayKind::Tue => "火",
-                DayKind::Wed => "水",
-                DayKind::Thu => "木",
-                DayKind::Fri => "金",
-                DayKind::Sat => "土",
-                DayKind::Unknown => "",
-            };
+        let s = match self {
+            DayKind::Sun => "日",
+            DayKind::Mon => "月",
+            DayKind::Tue => "火",
+            DayKind::Wed => "水",
+            DayKind::Thu => "木",
+            DayKind::Fri => "金",
+            DayKind::Sat => "土",
+            DayKind::Unknown => "",
+        };
         write!(f, "{}", s)
     }
 }
@@ -73,7 +72,7 @@ impl FromStr for DayKind {
             "木" => DayKind::Thu,
             "金" => DayKind::Fri,
             "土" => DayKind::Sat,
-            _ => DayKind::Unknown
+            _ => DayKind::Unknown,
         };
 
         Ok(day)
@@ -84,17 +83,16 @@ impl FromStr for DayKind {
 pub enum DateKind {
     On,
     Off,
-    Unknown
+    Unknown,
 }
 
 impl Display for DateKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s =
-            match self {
-                DateKind::On => "平日",
-                DateKind::Off => "休日",
-                DateKind::Unknown => "不明"
-            };
+        let s = match self {
+            DateKind::On => "平日",
+            DateKind::Off => "休日",
+            DateKind::Unknown => "不明",
+        };
         write!(f, "{}", s)
     }
 }
@@ -102,7 +100,7 @@ impl Display for DateKind {
 #[derive(Debug, Clone)]
 pub struct RawDate {
     pub month: u8,
-    pub date: u8
+    pub date: u8,
 }
 
 impl RawDate {
@@ -126,23 +124,29 @@ impl Display for RawDate {
 #[derive(Debug, Clone)]
 pub struct Date {
     pub raw_date: RawDate,
-    pub date_type: DateKind
+    pub date_type: DateKind,
 }
 
 impl Date {
     pub fn new(month: u8, date: u8) -> Self {
         Self {
             raw_date: RawDate::new(month, date),
-            date_type: DateKind::Unknown
+            date_type: DateKind::Unknown,
         }
     }
 
     pub fn annotate(mut self, off_list: &[Date]) -> Self {
         self.date_type = match off_list.iter().find(|o| o.raw_date == self.raw_date) {
             Some(_) => DateKind::Off,
-            None => DateKind::On
+            None => DateKind::On,
         };
         self
+    }
+}
+
+impl PartialEq for Date {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw_date == other.raw_date
     }
 }
 
@@ -156,7 +160,7 @@ impl FromStr for Date {
 
         Ok(Self {
             raw_date: RawDate::new(month.parse()?, date.parse()?),
-            date_type: DateKind::Unknown
+            date_type: DateKind::Unknown,
         })
     }
 }
@@ -170,7 +174,7 @@ impl Display for Date {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Time {
     pub hours: u16,
-    pub minutes: u16
+    pub minutes: u16,
 }
 
 impl Time {
@@ -211,7 +215,7 @@ impl Time {
 
     fn carry(mut self) -> Self {
         if self.minutes >= 60 {
-            self.minutes =  self.minutes - 60;
+            self.minutes = self.minutes - 60;
             self.hours = self.hours + 1;
         }
 
@@ -223,9 +227,9 @@ impl Time {
     }
 }
 
-impl Display for Time { 
+impl Display for Time {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: >02}.{: >02}", self.hours, self.minutes)
+        write!(f, "{: >02}:{: >02}", self.hours, self.minutes)
     }
 }
 
@@ -235,9 +239,9 @@ impl FromStr for Time {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut elements = s.split(":");
 
-        Ok(Self::new (
+        Ok(Self::new(
             elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
-            elements.next().ok_or(anyhow!("Invalid format"))?.parse()?
+            elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
         ))
     }
 }
@@ -245,7 +249,7 @@ impl FromStr for Time {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Clock {
     pub hours: u16,
-    pub minutes: u16
+    pub minutes: u16,
 }
 
 impl Clock {
@@ -288,7 +292,7 @@ impl Clock {
 
     fn carry(mut self) -> Self {
         if self.minutes >= 60 {
-            self.minutes =  self.minutes - 60;
+            self.minutes = self.minutes - 60;
             self.hours = self.hours + 1;
         }
 
@@ -304,7 +308,7 @@ impl Clock {
     }
 }
 
-impl Display for Clock { 
+impl Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{: >02}:{: >02}", self.hours, self.minutes)
     }
@@ -316,9 +320,9 @@ impl FromStr for Clock {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut elements = s.split(":");
 
-        Ok(Self::new (
+        Ok(Self::new(
             elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
-            elements.next().ok_or(anyhow!("Invalid format"))?.parse()?
+            elements.next().ok_or(anyhow!("Invalid format"))?.parse()?,
         ))
     }
 }
@@ -326,7 +330,7 @@ impl FromStr for Clock {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Range {
     start: Clock,
-    end: Clock
+    end: Clock,
 }
 
 impl Range {
@@ -345,7 +349,7 @@ impl Range {
 
 #[cfg(test)]
 mod tests {
-    use crate::clock::{Time, Clock};
+    use crate::clock::{Clock, Time};
 
     #[test]
     fn parse() {
