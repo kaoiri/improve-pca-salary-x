@@ -229,7 +229,7 @@ impl Time {
 
 impl Display for Time {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:.2}", self.hours as f32 + self.minutes as f32 / 60.0)
+        write!(f, "{: >02}.{: >02}", self.hours, self.minutes)
     }
 }
 
