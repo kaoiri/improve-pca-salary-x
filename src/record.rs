@@ -119,6 +119,7 @@ impl Record {
         buf.push(self.left_at.to_string());
         buf.push(self.break_time.to_string());
         buf.push(self.work_time.to_string());
+        buf.push(self.work_time.to_string().replace(".", ":"));
         buf.push(
             self.rounded_work_time()
                 .unwrap_or(Time::new(0, 0))
@@ -148,11 +149,15 @@ impl Record {
         buf.push(self.member.peek()?.start_at().to_string());
         buf.push(self.member.peek()?.member_type.print_force_breaks());
         buf.push(self.left_at.to_string());
+        // work_time or rounded_work_time
+        /*
         buf.push(
             self.rounded_work_time()
                 .unwrap_or(Time::new(0, 0))
                 .to_string(),
         );
+        */
+        buf.push(self.work_time.to_string().replace(".", ":"));
         buf.push(self.remarks.to_string());
         Ok(buf.join(","))
     }
@@ -203,7 +208,7 @@ pub fn collect_from_csv<R: BufRead>(
 }
 
 pub fn get_csv_headings() -> &'static str {
-    "年月,社員番号,氏名,日付,日付区分,曜日,規定出勤時刻,出勤時刻,退勤時刻,休憩時間,労働時間,補正労働時間,法定外労働時間,備考,出勤日数"
+    "年月,社員番号,氏名,日付,日付区分,曜日,規定出勤時刻,出勤時刻,退勤時刻,休憩時間,労働時間,労働時間（HH:mm）,補正労働時間,法定外労働時間,備考,出勤日数"
 }
 
 pub fn get_daily_csv_headings() -> &'static str {
