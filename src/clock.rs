@@ -175,11 +175,26 @@ impl Display for Date {
 pub struct Time {
     pub hours: u16,
     pub minutes: u16,
+    pub negative: bool,
 }
 
 impl Time {
     pub fn new(hours: u16, minutes: u16) -> Self {
-        Self { hours, minutes }.carry()
+        Self {
+            hours,
+            minutes,
+            negative: false,
+        }
+        .carry()
+    }
+
+    pub fn new_as_negative(hours: u16, minutes: u16) -> Self {
+        Self {
+            hours,
+            minutes,
+            negative: true,
+        }
+        .carry()
     }
 
     pub fn round_up(&self) -> Self {
@@ -209,6 +224,17 @@ impl Time {
         }
     }
 
+    pub fn sub_allow_negative(self, other: &Self) -> Self {
+        let self_as_minutes = self.as_minutes();
+        let other_as_minutes = other.as_minutes();
+
+        if self_as_minutes < other_as_minutes {
+            Self::new_as_negative(0, other_as_minutes - self_as_minutes)
+        } else {
+            Self::new(0, self_as_minutes - other_as_minutes)
+        }
+    }
+
     pub fn as_minutes(&self) -> u16 {
         60 * self.hours + self.minutes
     }
@@ -229,7 +255,11 @@ impl Time {
 
 impl Display for Time {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: >02}.{: >02}", self.hours, self.minutes)
+        if !self.negative {
+            write!(f, "{: >02}.{: >02}", self.hours, self.minutes)
+        } else {
+            write!(f, "-{: >02}.{: >02}", self.hours, self.minutes)
+        }
     }
 }
 
